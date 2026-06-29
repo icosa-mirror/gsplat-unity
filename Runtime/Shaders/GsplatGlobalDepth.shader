@@ -1,12 +1,7 @@
 // Copyright (c) 2026 Keir Rice
 // SPDX-License-Identifier: MIT
-//
-// Unified draw shader for global K-way merged Gaussian splatting.
-// Reads from concatenated global buffers (GlobalPackedBuffer, GlobalSH*Buffers)
-// via indices from GlobalOrderBuffer. Per-renderer transforms applied via
-// RendererTransforms structured buffer.
 
-Shader "Gsplat/Global"
+Shader "Gsplat/GlobalDepthOnly"
 {
     Properties {}
     SubShader
@@ -19,8 +14,9 @@ Shader "Gsplat/Global"
 
         Pass
         {
-            ZWrite Off
-            Blend One OneMinusSrcAlpha
+            ZWrite On
+            ZTest LEqual
+            ColorMask 0
             Cull Off
 
             HLSLPROGRAM
@@ -32,6 +28,7 @@ Shader "Gsplat/Global"
             #include "UnityCG.cginc"
 
             int _SplatInstanceSize;
+            float _DepthPrepassAlphaCutoff;
 
             #include "GsplatSparkGlobal.hlsl"
 
@@ -48,8 +45,8 @@ Shader "Gsplat/Global"
             {
                 float2 uv : TEXCOORD0;
                 nointerpolation uint rendererId : TEXCOORD1;
+                float alpha : TEXCOORD2;
                 float4 vertex : SV_POSITION;
-                float4 color : COLOR;
                 UNITY_VERTEX_OUTPUT_STEREO
             };
 
@@ -77,19 +74,11 @@ Shader "Gsplat/Global"
                 if (!InitGlobalSplatData(source, center, corner, color))
                     return o;
 
-                #ifndef SH_BANDS_0
-                // center.modelView is already computed by InitGlobalSplatData → InitCenter.
-                float3 dir = normalize(mul(center.view, (float3x3)center.modelView));
-                float3 sh[SH_COEFFS];
-                InitGlobalSH(source, sh);
-                color.rgb += EvalSH(sh, dir, (int)_RendererParams[source.rendererId].shDegree);
-                #endif
-
                 ClipCorner(corner, color.a);
 
                 o.vertex = center.proj + float4(corner.offset.x, _ProjectionParams.x * corner.offset.y, 0, 0);
-                o.color  = color;
-                o.uv     = corner.uv;
+                o.alpha = color.a;
+                o.uv = corner.uv;
                 o.rendererId = source.rendererId;
                 return o;
             }
@@ -105,12 +94,10 @@ Shader "Gsplat/Global"
                 float maxUV = max(absUV.x, absUV.y);
 
                 float falloff = -exp((maxUV - p.scaleFactor * 1.16) * 25 * p.scaleFactor);
-                float alpha = (exp(-A * 4.0) + falloff) * i.color.a;
+                float alpha = (exp(-A * 4.0) + falloff) * i.alpha;
 
-                if (alpha < 1.0 / 255.0) discard;
-                if (p.gammaToLinear)
-                    return float4(GammaToLinearSpace(i.color.rgb) * alpha * p.brightness, alpha);
-                return float4(i.color.rgb * alpha * p.brightness, alpha);
+                if (alpha < _DepthPrepassAlphaCutoff) discard;
+                return 0;
             }
             ENDHLSL
         }
