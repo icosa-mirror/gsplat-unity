@@ -34,6 +34,7 @@ namespace Gsplat
         static readonly int k_shDegree = Shader.PropertyToID("_SHDegree");
         static readonly int k_brightness = Shader.PropertyToID("_Brightness");
         static readonly int k_scaleFactor = Shader.PropertyToID("_ScaleFactor");
+        static readonly int k_depthPrepassAlphaCutoff = Shader.PropertyToID("_DepthPrepassAlphaCutoff");
 
         uint m_framesBeforeRecomputeSort = 0;
         uint m_sortsBeforeRecomputeCutouts = 0;
@@ -272,6 +273,7 @@ namespace Gsplat
             m_propertyBlock.SetInteger(k_shDegree, Math.Min(m_gsplatAsset.SHBands, shDegree));
             m_propertyBlock.SetFloat(k_brightness, brightness);
             m_propertyBlock.SetFloat(k_scaleFactor, scaleFactor);
+            m_propertyBlock.SetFloat(k_depthPrepassAlphaCutoff, GsplatSettings.Instance.DepthPrepassAlphaCutoff);
             m_propertyBlock.SetMatrix(k_matrixM, transform.localToWorldMatrix);
 
             uint order = Math.Clamp(renderOrder, 0, GsplatSettings.Instance.MaxRenderOrder - 1);
