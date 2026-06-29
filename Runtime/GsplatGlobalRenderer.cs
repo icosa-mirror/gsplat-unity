@@ -111,6 +111,7 @@ namespace Gsplat
         static readonly int k_rendererParamsProp = Shader.PropertyToID("_RendererParams");
         static readonly int k_totalSplatCount = Shader.PropertyToID("_TotalSplatCount");
         static readonly int k_splatInstanceSize = Shader.PropertyToID("_SplatInstanceSize");
+        static readonly int k_depthPrepassAlphaCutoff = Shader.PropertyToID("_DepthPrepassAlphaCutoff");
 
         public void InitGlobal(GsplatGlobalMaterial globalMaterial)
         {
@@ -479,6 +480,7 @@ namespace Gsplat
             m_globalPropertyBlock.SetBuffer(k_rendererParamsProp, m_rendererParamsBuffer);
             m_globalPropertyBlock.SetInteger(k_totalSplatCount, (int)m_totalRemainingCount);
             m_globalPropertyBlock.SetInteger(k_splatInstanceSize, (int)GsplatSettings.Instance.SplatInstanceSize);
+            m_globalPropertyBlock.SetFloat(k_depthPrepassAlphaCutoff, GsplatSettings.Instance.DepthPrepassAlphaCutoff);
 
             if (m_globalSHBands >= 1)
                 m_globalPropertyBlock.SetBuffer(k_globalSH1Buffer, m_globalSH1Buffer);
