@@ -70,6 +70,7 @@ namespace Gsplat
         }
 
         public ComputeShader ComputeShader;
+        public ComputeShader IntersectionShader;
         public GsplatGlobalMaterial GlobalMaterial;
 
         [Tooltip(
@@ -117,6 +118,9 @@ namespace Gsplat
         static GsplatGlobalMaterial DefaultGlobalMaterial => AssetDatabase.LoadAssetAtPath<GsplatGlobalMaterial>(
             GsplatUtils.k_PackagePath + "Runtime/Materials/GsplatGlobal.asset");
 
+        static ComputeShader DefaultIntersectionShader => AssetDatabase.LoadAssetAtPath<ComputeShader>(
+            GsplatUtils.k_PackagePath + "Runtime/Shaders/GsplatIntersect.compute");
+
         static GsplatMaterial[] DefaultMaterials
         {
             get
@@ -136,6 +140,7 @@ namespace Gsplat
         {
             Version = GsplatUtils.k_Version;
             ComputeShader = DefaultComputeShader;
+            IntersectionShader = DefaultIntersectionShader;
             GlobalMaterial = DefaultGlobalMaterial;
             Materials = DefaultMaterials;
             SplatInstanceSize = 128;
@@ -182,6 +187,13 @@ namespace Gsplat
 
         void OnValidate()
         {
+#if UNITY_EDITOR
+            if (!IntersectionShader)
+            {
+                IntersectionShader = DefaultIntersectionShader;
+                EditorUtility.SetDirty(this);
+            }
+#endif
             if (ComputeShader != m_prevComputeShader)
             {
                 GsplatSorter.Instance.InitSorter(ComputeShader);

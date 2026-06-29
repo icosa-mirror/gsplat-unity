@@ -28,11 +28,19 @@ namespace Gsplat
         public GraphicsBuffer OrderSizeBuffer { get; private set; }
         public GraphicsBuffer BoundsBuffer { get; private set; }
         public ISorterResource SorterResource { get; private set; }
+        GraphicsBuffer m_intersectionHitBuffer;
+        readonly uint[] m_intersectionHit = new uint[1];
 
         static readonly int k_orderBuffer = Shader.PropertyToID("_OrderBuffer");
+        static readonly int k_packedSplatsBuffer = Shader.PropertyToID("_PackedSplatsBuffer");
+        static readonly int k_positionBuffer = Shader.PropertyToID("_PositionBuffer");
+        static readonly int k_scaleBuffer = Shader.PropertyToID("_ScaleBuffer");
         static readonly int k_matrixM = Shader.PropertyToID("_MATRIX_M");
         static readonly int k_splatInstanceSize = Shader.PropertyToID("_SplatInstanceSize");
         static readonly int k_splatCount = Shader.PropertyToID("_SplatCount");
+        static readonly int k_sphereCenter = Shader.PropertyToID("_SphereCenter");
+        static readonly int k_sphereRadius = Shader.PropertyToID("_SphereRadius");
+        static readonly int k_hitBuffer = Shader.PropertyToID("_HitBuffer");
         static readonly int k_gammaToLinear = Shader.PropertyToID("_GammaToLinear");
         static readonly int k_shDegree = Shader.PropertyToID("_SHDegree");
         static readonly int k_brightness = Shader.PropertyToID("_Brightness");
@@ -68,6 +76,63 @@ namespace Gsplat
 
         public void ComputeDepth(CommandBuffer cmd, Matrix4x4 matrixMv) =>
             m_gsplatAsset.ComputeDepth(cmd, matrixMv, SorterResource, GsplatResource);
+
+        public bool TryIntersectSphere(Transform transform, Vector3 centerWorld, float radiusWorld,
+            float scaleFactor, out float score)
+        {
+            score = -1.0f;
+            ComputeShader cs = GsplatSettings.Instance.IntersectionShader;
+            if (!cs || GsplatResource == null || GsplatResource.UploadedCount == 0)
+                return false;
+
+            int kernel;
+            if (GsplatResource is GsplatResourceSpark spark)
+            {
+                kernel = cs.FindKernel("IntersectSpark");
+                cs.SetBuffer(kernel, k_packedSplatsBuffer, spark.PackedSplatsBuffer);
+            }
+            else if (GsplatResource is GsplatResourceUncompressed uncompressed)
+            {
+                kernel = cs.FindKernel("IntersectUncompressed");
+                cs.SetBuffer(kernel, k_positionBuffer, uncompressed.PositionBuffer);
+                cs.SetBuffer(kernel, k_scaleBuffer, uncompressed.ScaleBuffer);
+            }
+            else
+            {
+                return false;
+            }
+
+            EnsureIntersectionBuffer();
+            m_intersectionHit[0] = 0;
+            m_intersectionHitBuffer.SetData(m_intersectionHit);
+
+            Matrix4x4 worldToLocal = transform.worldToLocalMatrix;
+            Vector3 centerLocal = worldToLocal.MultiplyPoint3x4(centerWorld);
+            float radiusLocal = Mathf.Max(
+                worldToLocal.MultiplyVector(Vector3.right * radiusWorld).magnitude,
+                Mathf.Max(
+                    worldToLocal.MultiplyVector(Vector3.up * radiusWorld).magnitude,
+                    worldToLocal.MultiplyVector(Vector3.forward * radiusWorld).magnitude));
+
+            cs.SetInt(k_splatCount, (int)GsplatResource.UploadedCount);
+            cs.SetVector(k_sphereCenter, centerLocal);
+            cs.SetFloat(k_sphereRadius, radiusLocal);
+            cs.SetFloat(k_scaleFactor, scaleFactor);
+            cs.SetBuffer(kernel, k_hitBuffer, m_intersectionHitBuffer);
+            cs.Dispatch(kernel, (int)GsplatUtils.DivRoundUp(GsplatResource.UploadedCount, 256), 1, 1);
+
+            m_intersectionHitBuffer.GetData(m_intersectionHit);
+            if (m_intersectionHit[0] == 0)
+                return false;
+
+            score = 1.0f;
+            return true;
+        }
+
+        void EnsureIntersectionBuffer()
+        {
+            m_intersectionHitBuffer ??= new GraphicsBuffer(GraphicsBuffer.Target.Structured, 1, sizeof(uint));
+        }
 
         Bounds ExtractBounds()
         {
@@ -185,6 +250,8 @@ namespace Gsplat
             OrderSizeBuffer = null;
             BoundsBuffer?.Dispose();
             BoundsBuffer = null;
+            m_intersectionHitBuffer?.Dispose();
+            m_intersectionHitBuffer = null;
         }
 
         public void ForceRefresh()

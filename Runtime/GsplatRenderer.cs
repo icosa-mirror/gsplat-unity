@@ -92,6 +92,16 @@ namespace Gsplat
 
         public void ComputeDepth(CommandBuffer cmd, Matrix4x4 matrixMv) => m_renderer.ComputeDepth(cmd, matrixMv);
 
+        public bool TryIntersectSphere(Vector3 centerWorld, float radiusWorld, out float score)
+        {
+            score = -1.0f;
+            if (!Valid || m_renderer == null)
+                return false;
+
+            return m_renderer.TryIntersectSphere(transform, centerWorld, radiusWorld,
+                1.0f - SplatDownscaleFactor, out score);
+        }
+
         public void RenderColor(CommandBuffer cmd, Camera camera)
         {
             m_renderer.RenderColor(cmd, transform, GammaToLinear, SHDegree, Brightness,
