@@ -6,6 +6,9 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using UnityEngine.Rendering;
+#if UNITY_6000_0_OR_NEWER
+using UnityEngine.Rendering.RenderGraphModule;
+#endif
 
 namespace Gsplat
 {
@@ -18,6 +21,12 @@ namespace Gsplat
         public bool Valid { get; }
         public bool ComputeSortRequired { get; }
         public void ComputeDepth(CommandBuffer cmd, Matrix4x4 matrixMv);
+        public void RenderColor(CommandBuffer cmd, Camera camera);
+        public void RenderDepthPrepass(CommandBuffer cmd, Camera camera);
+#if UNITY_6000_0_OR_NEWER
+        public void RenderColor(RasterCommandBuffer cmd, Camera camera);
+        public void RenderDepthPrepass(RasterCommandBuffer cmd, Camera camera);
+#endif
 
         // Used by GsplatSorter to populate the global packed buffer.
         public GsplatResource GsplatResource { get; }
@@ -234,6 +243,76 @@ namespace Gsplat
             if (GlobalRenderEnabled)
                 m_globalRenderer.DispatchMerge(cmd, m_activeGsplats);
         }
+
+        public void RenderDepthPrepass(CommandBuffer cmd, Camera camera)
+        {
+            if (GlobalRenderEnabled)
+            {
+                m_globalRenderer.RenderDepthPrepass(cmd);
+                return;
+            }
+
+            foreach (var gs in m_activeGsplats)
+            {
+                if (gs.RemainingCount <= 0) continue;
+                var layer = (gs as Component)?.gameObject.layer ?? 0;
+                if (camera && (camera.cullingMask & (1 << layer)) == 0) continue;
+                gs.RenderDepthPrepass(cmd, camera);
+            }
+        }
+
+        public void RenderColor(CommandBuffer cmd, Camera camera)
+        {
+            if (GlobalRenderEnabled)
+            {
+                m_globalRenderer.RenderColor(cmd);
+                return;
+            }
+
+            foreach (var gs in m_activeGsplats)
+            {
+                if (gs.RemainingCount <= 0) continue;
+                var layer = (gs as Component)?.gameObject.layer ?? 0;
+                if (camera && (camera.cullingMask & (1 << layer)) == 0) continue;
+                gs.RenderColor(cmd, camera);
+            }
+        }
+
+#if UNITY_6000_0_OR_NEWER
+        public void RenderDepthPrepass(RasterCommandBuffer cmd, Camera camera)
+        {
+            if (GlobalRenderEnabled)
+            {
+                m_globalRenderer.RenderDepthPrepass(cmd);
+                return;
+            }
+
+            foreach (var gs in m_activeGsplats)
+            {
+                if (gs.RemainingCount <= 0) continue;
+                var layer = (gs as Component)?.gameObject.layer ?? 0;
+                if (camera && (camera.cullingMask & (1 << layer)) == 0) continue;
+                gs.RenderDepthPrepass(cmd, camera);
+            }
+        }
+
+        public void RenderColor(RasterCommandBuffer cmd, Camera camera)
+        {
+            if (GlobalRenderEnabled)
+            {
+                m_globalRenderer.RenderColor(cmd);
+                return;
+            }
+
+            foreach (var gs in m_activeGsplats)
+            {
+                if (gs.RemainingCount <= 0) continue;
+                var layer = (gs as Component)?.gameObject.layer ?? 0;
+                if (camera && (camera.cullingMask & (1 << layer)) == 0) continue;
+                gs.RenderColor(cmd, camera);
+            }
+        }
+#endif
 
         // Called by GsplatPlayerLoopHook once per frame, before Unity's PostLateUpdate phase
         public void Update()

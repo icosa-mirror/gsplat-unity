@@ -7,6 +7,9 @@ using UnityEditor;
 #endif
 using UnityEngine;
 using UnityEngine.Rendering;
+#if UNITY_6000_0_OR_NEWER
+using UnityEngine.Rendering.RenderGraphModule;
+#endif
 
 namespace Gsplat
 {
@@ -89,6 +92,30 @@ namespace Gsplat
 
         public void ComputeDepth(CommandBuffer cmd, Matrix4x4 matrixMv) => m_renderer.ComputeDepth(cmd, matrixMv);
 
+        public void RenderColor(CommandBuffer cmd, Camera camera)
+        {
+            m_renderer.RenderColor(cmd, transform, GammaToLinear, SHDegree, Brightness,
+                1.0f - SplatDownscaleFactor, RenderOrder);
+        }
+
+        public void RenderDepthPrepass(CommandBuffer cmd, Camera camera)
+        {
+            m_renderer.RenderDepthPrepass(cmd, transform, 1.0f - SplatDownscaleFactor, RenderOrder);
+        }
+
+#if UNITY_6000_0_OR_NEWER
+        public void RenderColor(RasterCommandBuffer cmd, Camera camera)
+        {
+            m_renderer.RenderColor(cmd, transform, GammaToLinear, SHDegree, Brightness,
+                1.0f - SplatDownscaleFactor, RenderOrder);
+        }
+
+        public void RenderDepthPrepass(RasterCommandBuffer cmd, Camera camera)
+        {
+            m_renderer.RenderDepthPrepass(cmd, transform, 1.0f - SplatDownscaleFactor, RenderOrder);
+        }
+#endif
+
         void OnEnable()
         {
             GsplatSorter.Instance.RegisterGsplat(this);
@@ -167,7 +194,7 @@ namespace Gsplat
                 m_renderer.DispatchInitOrder(Cutouts, transform.localToWorldMatrix, CutoutsUpdateBounds);
                 // When the global sorter has merged all renderers into a single draw call,
                 // skip the per-renderer draw — GsplatSorter.DrawAll handles rendering.
-                if (!GsplatSorter.Instance.GlobalRenderEnabled)
+                if (!GraphicsSettings.currentRenderPipeline && !GsplatSorter.Instance.GlobalRenderEnabled)
                     m_renderer.Render(transform, gameObject.layer, GammaToLinear, SHDegree, Brightness,
                         1.0f - SplatDownscaleFactor, RenderOrder);
             }
