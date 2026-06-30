@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added optional global depth sorting across multiple GsplatRenderer instances, allowing splats from different renderers to interleave correctly in a single draw call. An option `Enable Global Sort` is added to `Project Settings > Gsplat` to enable this feature. Global sorting only supports assets with Spark compression. The package falls back to the per-renderer pipeline when any active `GsplatRenderer` using an uncompressed asset. ([#28](https://github.com/wuyize25/gsplat-unity/pull/28) by [@KeirRice](https://github.com/KeirRice))
 
+- Added support for PlayCanvas SOG v2 ZIP bundle imports (`.sog`) in both Spark and Uncompressed compression modes. SOG import decodes `meta.json` plus lossless WebP property images through `unity.webp`/libwebp into the existing `GsplatAsset` runtime representations and supports SOG SH bands 0-3. The same SOG loader can be used at runtime on supported platforms including Android.
+
 ## [1.3.0] - 2026-05-23
 
 ### Added
