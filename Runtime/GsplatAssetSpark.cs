@@ -170,6 +170,20 @@ namespace Gsplat
             if (fs.Length >= 2 * 1024 * 1024 * 1024L)
                 throw new NotSupportedException("currently files larger than 2GB are not supported");
 
+            LoadFromPlyStream(fs, progressCallback, sourceCoordinates);
+        }
+
+        public override void LoadFromPlyBytes(byte[] plyBytes, ProgressCallback progressCallback = null,
+            SourceCoordinates sourceCoordinates = SourceCoordinates.RUF)
+        {
+            if (plyBytes == null || plyBytes.Length == 0)
+                throw new ArgumentException("PLY byte array is null or empty.", nameof(plyBytes));
+            using var ms = new MemoryStream(plyBytes, writable: false);
+            LoadFromPlyStream(ms, progressCallback, sourceCoordinates);
+        }
+
+        void LoadFromPlyStream(Stream fs, ProgressCallback progressCallback, SourceCoordinates sourceCoordinates)
+        {
             var plyInfo = new PlyHeaderInfo(fs);
             var shCoeffs = plyInfo.SHPropertyCount / 3;
             SplatCount = plyInfo.VertexCount;

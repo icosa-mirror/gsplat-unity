@@ -55,6 +55,10 @@ namespace Gsplat
             SourceCoordinates sourceCoordinates = SourceCoordinates.RUF)
             => throw new NotSupportedException("GsplatAssetSpz loads SPZ files, not PLY.");
 
+        public override void LoadFromPlyBytes(byte[] plyBytes, ProgressCallback progressCallback = null,
+            SourceCoordinates sourceCoordinates = SourceCoordinates.RUF)
+            => throw new NotSupportedException("GsplatAssetSpz loads SPZ files, not PLY.");
+
         public SpzPhaseTimings LoadFromSpz(string spzPath,
             SourceCoordinates sourceCoordinates = SourceCoordinates.RUB,
             ProgressCallback progressCallback = null)

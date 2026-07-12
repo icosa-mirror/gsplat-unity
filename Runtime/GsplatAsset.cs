@@ -71,7 +71,7 @@ namespace Gsplat
         /// </summary>
         /// <param name="fs"></param>
         /// <returns></returns>
-        static string ReadLine(FileStream fs)
+        static string ReadLine(Stream fs)
         {
             List<byte> byteBuffer = new List<byte>();
             while (true)
@@ -90,13 +90,21 @@ namespace Gsplat
             return Encoding.UTF8.GetString(byteBuffer.ToArray());
         }
 
-        public PlyHeaderInfo(FileStream fs)
+        public PlyHeaderInfo(Stream fs)
         {
+            bool inVertexElement = false;
             while (ReadLine(fs) is { } line && line != "end_header")
             {
                 var tokens = line.Split(' ');
-                if (tokens.Length == 3 && tokens[0] == "element" && tokens[1] == "vertex")
-                    VertexCount = uint.Parse(tokens[2]);
+                if (tokens.Length >= 2 && tokens[0] == "element")
+                {
+                    inVertexElement = tokens.Length == 3 && tokens[1] == "vertex";
+                    if (inVertexElement)
+                        VertexCount = uint.Parse(tokens[2]);
+                    continue;
+                }
+
+                if (!inVertexElement) continue;
                 if (tokens.Length != 3 || tokens[0] != "property") continue;
                 switch (tokens[2])
                 {
@@ -147,6 +155,10 @@ namespace Gsplat
         public abstract void Allocate();
         public abstract void LoadFromPly(string plyPath, ProgressCallback progressCallback = null,
             SourceCoordinates sourceCoordinates = SourceCoordinates.RUF);
+
+        public virtual void LoadFromPlyBytes(byte[] plyBytes, ProgressCallback progressCallback = null,
+            SourceCoordinates sourceCoordinates = SourceCoordinates.RUF)
+            => throw new NotSupportedException($"{GetType().Name} does not support loading PLY from bytes.");
 
         public abstract GsplatResource CreateResource();
 
