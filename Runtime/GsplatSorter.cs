@@ -174,7 +174,24 @@ namespace Gsplat
                 return false;
             }
 
+            // A single global draw can only have one Unity layer. Mixed-layer sets must retain
+            // per-renderer draws so each camera's culling mask is respected.
+            var renderLayer = (m_activeGsplats[0] as Component)?.gameObject.layer ?? 0;
+            if (m_activeGsplats.Any(gs => ((gs as Component)?.gameObject.layer ?? 0) != renderLayer))
+                return false;
+
             return true;
+        }
+
+        bool CanRenderGloballyForCamera(Camera camera)
+        {
+            if (!GlobalRenderEnabled || m_activeGsplats.Count == 0)
+                return false;
+            if (!camera)
+                return true;
+
+            var renderLayer = (m_activeGsplats[0] as Component)?.gameObject.layer ?? 0;
+            return (camera.cullingMask & (1 << renderLayer)) != 0;
         }
 
         public void MarkGlobalBuffersDirty() => m_globalRenderer.MarkGlobalBuffersDirty();
@@ -240,13 +257,13 @@ namespace Gsplat
             cmd.EndSample(k_radixSortPassName);
 
             // --- Global K-way merge ---
-            if (GlobalRenderEnabled)
+            if (CanRenderGloballyForCamera(camera))
                 m_globalRenderer.DispatchMerge(cmd, m_activeGsplats);
         }
 
         public void RenderDepthPrepass(CommandBuffer cmd, Camera camera)
         {
-            if (GlobalRenderEnabled)
+            if (CanRenderGloballyForCamera(camera))
             {
                 m_globalRenderer.RenderDepthPrepass(cmd);
                 return;
@@ -263,7 +280,7 @@ namespace Gsplat
 
         public void RenderColor(CommandBuffer cmd, Camera camera)
         {
-            if (GlobalRenderEnabled)
+            if (CanRenderGloballyForCamera(camera))
             {
                 m_globalRenderer.RenderColor(cmd);
                 return;
@@ -281,7 +298,7 @@ namespace Gsplat
 #if UNITY_6000_0_OR_NEWER
         public void RenderDepthPrepass(RasterCommandBuffer cmd, Camera camera)
         {
-            if (GlobalRenderEnabled)
+            if (CanRenderGloballyForCamera(camera))
             {
                 m_globalRenderer.RenderDepthPrepass(cmd);
                 return;
@@ -298,7 +315,7 @@ namespace Gsplat
 
         public void RenderColor(RasterCommandBuffer cmd, Camera camera)
         {
-            if (GlobalRenderEnabled)
+            if (CanRenderGloballyForCamera(camera))
             {
                 m_globalRenderer.RenderColor(cmd);
                 return;
