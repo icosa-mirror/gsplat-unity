@@ -11,7 +11,10 @@ namespace Gsplat
         protected override void Execute(CustomPassContext ctx)
         {
             if (GsplatSorter.Instance.Valid && GsplatSettings.Instance.Valid && GsplatSorter.Instance.GatherGsplatsForCamera(ctx.hdCamera.camera))
+            {
                 GsplatSorter.Instance.DispatchSort(ctx.cmd, ctx.hdCamera.camera);
+                GsplatSorter.Instance.RenderColor(ctx.cmd, ctx.hdCamera.camera);
+            }
         }
     }
 }
