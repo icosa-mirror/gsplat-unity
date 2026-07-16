@@ -157,7 +157,7 @@ namespace Gsplat
         {
             EnsureGlobalBuffers(activeGsplats);
             if (m_totalSplatCount == 0) return;
-            m_renderLayer = (activeGsplats[0] as Component)?.gameObject.layer ?? 0;
+            m_renderLayer = activeGsplats[0].transform.gameObject.layer;
             UpdateRendererTransforms(activeGsplats);
             UpdateRendererParams(activeGsplats);
             Render();

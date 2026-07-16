@@ -167,8 +167,8 @@ namespace Gsplat
 
             // A single global draw can only have one Unity layer. Mixed-layer sets must retain
             // per-renderer draws so each camera's culling mask is respected.
-            var renderLayer = (m_activeGsplats[0] as Component)?.gameObject.layer ?? 0;
-            if (m_activeGsplats.Any(gs => ((gs as Component)?.gameObject.layer ?? 0) != renderLayer))
+            var renderLayer = m_activeGsplats[0].transform.gameObject.layer;
+            if (m_activeGsplats.Any(gs => gs.transform.gameObject.layer != renderLayer))
                 return false;
 
             return true;
