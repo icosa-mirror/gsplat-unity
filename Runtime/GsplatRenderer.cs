@@ -163,12 +163,17 @@ namespace Gsplat
             {
                 m_renderer.EvaluateRefreshRequired(SortMode, SortRefreshRate - 1, CutoutsRefreshRate - 1);
                 m_renderer.DispatchInitOrder(Cutouts, transform.localToWorldMatrix, CutoutsUpdateBounds);
-                // When the global sorter has merged all renderers into a single draw call,
-                // skip the per-renderer draw — GsplatSorter.DrawAll handles rendering.
-                if (!GsplatSorter.Instance.GlobalRenderEnabled)
-                    m_renderer.Render(transform, gameObject.layer, GammaToLinear, SHDegree, Brightness,
-                        1.0f - SplatDownscaleFactor, RenderOrder);
             }
+        }
+
+        // Called by GsplatSorter after it has selected one render path for the frame.
+        internal void Render()
+        {
+            if (!Valid || !GsplatSettings.Instance.Valid || !GsplatSorter.Instance.Valid)
+                return;
+
+            m_renderer.Render(transform, gameObject.layer, GammaToLinear, SHDegree, Brightness,
+                1.0f - SplatDownscaleFactor, RenderOrder);
         }
     }
 }
