@@ -174,7 +174,21 @@ namespace Gsplat
                 return false;
             }
 
+            // One merged draw cannot represent multiple Unity layers. Use per-renderer draws
+            // for mixed layers so each camera can apply its culling mask independently.
+            var renderLayer = m_activeGsplats[0].transform.gameObject.layer;
+            if (m_activeGsplats.Any(gs => gs.transform.gameObject.layer != renderLayer))
+                return false;
+
             return true;
+        }
+
+        bool CameraRendersGlobalLayer(Camera camera)
+        {
+            if (!camera)
+                return true;
+            var layer = m_activeGsplats[0].transform.gameObject.layer;
+            return (camera.cullingMask & (1 << layer)) != 0;
         }
 
         public void MarkGlobalBuffersDirty() => m_globalRenderer.MarkGlobalBuffersDirty();
@@ -248,14 +262,15 @@ namespace Gsplat
         {
             if (GlobalRenderEnabled)
             {
-                m_globalRenderer.RenderDepthPrepass(cmd);
+                if (CameraRendersGlobalLayer(camera))
+                    m_globalRenderer.RenderDepthPrepass(cmd);
                 return;
             }
 
             foreach (var gs in m_activeGsplats)
             {
                 if (gs.RemainingCount <= 0) continue;
-                var layer = (gs as Component)?.gameObject.layer ?? 0;
+                var layer = gs.transform.gameObject.layer;
                 if (camera && (camera.cullingMask & (1 << layer)) == 0) continue;
                 gs.RenderDepthPrepass(cmd, camera);
             }
@@ -265,14 +280,15 @@ namespace Gsplat
         {
             if (GlobalRenderEnabled)
             {
-                m_globalRenderer.RenderColor(cmd);
+                if (CameraRendersGlobalLayer(camera))
+                    m_globalRenderer.RenderColor(cmd);
                 return;
             }
 
             foreach (var gs in m_activeGsplats.OrderBy(gs => (gs as GsplatRenderer)?.RenderOrder ?? 0))
             {
                 if (gs.RemainingCount <= 0) continue;
-                var layer = (gs as Component)?.gameObject.layer ?? 0;
+                var layer = gs.transform.gameObject.layer;
                 if (camera && (camera.cullingMask & (1 << layer)) == 0) continue;
                 gs.RenderColor(cmd, camera);
             }
@@ -283,14 +299,15 @@ namespace Gsplat
         {
             if (GlobalRenderEnabled)
             {
-                m_globalRenderer.RenderDepthPrepass(cmd);
+                if (CameraRendersGlobalLayer(camera))
+                    m_globalRenderer.RenderDepthPrepass(cmd);
                 return;
             }
 
             foreach (var gs in m_activeGsplats)
             {
                 if (gs.RemainingCount <= 0) continue;
-                var layer = (gs as Component)?.gameObject.layer ?? 0;
+                var layer = gs.transform.gameObject.layer;
                 if (camera && (camera.cullingMask & (1 << layer)) == 0) continue;
                 gs.RenderDepthPrepass(cmd, camera);
             }
@@ -300,14 +317,15 @@ namespace Gsplat
         {
             if (GlobalRenderEnabled)
             {
-                m_globalRenderer.RenderColor(cmd);
+                if (CameraRendersGlobalLayer(camera))
+                    m_globalRenderer.RenderColor(cmd);
                 return;
             }
 
             foreach (var gs in m_activeGsplats.OrderBy(gs => (gs as GsplatRenderer)?.RenderOrder ?? 0))
             {
                 if (gs.RemainingCount <= 0) continue;
-                var layer = (gs as Component)?.gameObject.layer ?? 0;
+                var layer = gs.transform.gameObject.layer;
                 if (camera && (camera.cullingMask & (1 << layer)) == 0) continue;
                 gs.RenderColor(cmd, camera);
             }
