@@ -78,7 +78,7 @@ namespace Gsplat
         {
             score = -1.0f;
             ComputeShader cs = GsplatSettings.Instance.IntersectionShader;
-            if (!cs || GsplatResource == null || GsplatResource.UploadedCount == 0)
+            if (!cs || GsplatResource == null || GsplatResource.UploadedCount == 0 || m_remainingCount == 0)
                 return false;
 
             int kernel;
@@ -98,6 +98,8 @@ namespace Gsplat
                 return false;
             }
 
+            cs.SetBuffer(kernel, k_orderBuffer, SorterResource.OrderBuffer);
+
             EnsureIntersectionBuffer();
             m_intersectionHit[0] = 0;
             m_intersectionHitBuffer.SetData(m_intersectionHit);
@@ -110,12 +112,12 @@ namespace Gsplat
                     worldToLocal.MultiplyVector(Vector3.up * radiusWorld).magnitude,
                     worldToLocal.MultiplyVector(Vector3.forward * radiusWorld).magnitude));
 
-            cs.SetInt(k_splatCount, (int)GsplatResource.UploadedCount);
+            cs.SetInt(k_splatCount, (int)m_remainingCount);
             cs.SetVector(k_sphereCenter, centerLocal);
             cs.SetFloat(k_sphereRadius, radiusLocal);
             cs.SetFloat(k_scaleFactor, scaleFactor);
             cs.SetBuffer(kernel, k_hitBuffer, m_intersectionHitBuffer);
-            cs.Dispatch(kernel, (int)GsplatUtils.DivRoundUp(GsplatResource.UploadedCount, 256), 1, 1);
+            cs.Dispatch(kernel, (int)GsplatUtils.DivRoundUp(m_remainingCount, 256), 1, 1);
 
             m_intersectionHitBuffer.GetData(m_intersectionHit);
             if (m_intersectionHit[0] == 0)

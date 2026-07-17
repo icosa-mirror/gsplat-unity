@@ -12,6 +12,7 @@ float _ScaleFactor;
 StructuredBuffer<uint4> _PackedSplatsBuffer;
 StructuredBuffer<float3> _PositionBuffer;
 StructuredBuffer<float3> _ScaleBuffer;
+StructuredBuffer<uint> _OrderBuffer;
 RWStructuredBuffer<uint> _HitBuffer;
 
 static const float LN_SCALE_MIN = -12.0;
@@ -50,9 +51,10 @@ bool IntersectsSplatSphere(float3 center, float3 scale, float alpha)
 [numthreads(256, 1, 1)]
 void IntersectSpark(uint3 id : SV_DispatchThreadID)
 {
-    uint idx = id.x;
-    if (idx >= _SplatCount || _HitBuffer[0] != 0)
+    uint orderIdx = id.x;
+    if (orderIdx >= _SplatCount || _HitBuffer[0] != 0)
         return;
+    uint idx = _OrderBuffer[orderIdx];
 
     float alpha;
     float3 center;
@@ -66,9 +68,10 @@ void IntersectSpark(uint3 id : SV_DispatchThreadID)
 [numthreads(256, 1, 1)]
 void IntersectUncompressed(uint3 id : SV_DispatchThreadID)
 {
-    uint idx = id.x;
-    if (idx >= _SplatCount || _HitBuffer[0] != 0)
+    uint orderIdx = id.x;
+    if (orderIdx >= _SplatCount || _HitBuffer[0] != 0)
         return;
+    uint idx = _OrderBuffer[orderIdx];
 
     if (IntersectsSplatSphere(_PositionBuffer[idx], _ScaleBuffer[idx], 1.0))
         InterlockedAdd(_HitBuffer[0], 1);
