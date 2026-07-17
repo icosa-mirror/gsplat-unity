@@ -12,6 +12,7 @@ float _ScaleFactor;
 StructuredBuffer<uint4> _PackedSplatsBuffer;
 StructuredBuffer<float3> _PositionBuffer;
 StructuredBuffer<float3> _ScaleBuffer;
+StructuredBuffer<float4> _ColorBuffer;
 StructuredBuffer<uint> _OrderBuffer;
 RWStructuredBuffer<uint> _HitBuffer;
 
@@ -73,6 +74,6 @@ void IntersectUncompressed(uint3 id : SV_DispatchThreadID)
         return;
     uint idx = _OrderBuffer[orderIdx];
 
-    if (IntersectsSplatSphere(_PositionBuffer[idx], _ScaleBuffer[idx], 1.0))
+    if (IntersectsSplatSphere(_PositionBuffer[idx], _ScaleBuffer[idx], _ColorBuffer[idx].a))
         InterlockedAdd(_HitBuffer[0], 1);
 }

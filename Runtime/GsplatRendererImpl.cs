@@ -32,6 +32,7 @@ namespace Gsplat
         static readonly int k_packedSplatsBuffer = Shader.PropertyToID("_PackedSplatsBuffer");
         static readonly int k_positionBuffer = Shader.PropertyToID("_PositionBuffer");
         static readonly int k_scaleBuffer = Shader.PropertyToID("_ScaleBuffer");
+        static readonly int k_colorBuffer = Shader.PropertyToID("_ColorBuffer");
         static readonly int k_matrixM = Shader.PropertyToID("_MATRIX_M");
         static readonly int k_splatInstanceSize = Shader.PropertyToID("_SplatInstanceSize");
         static readonly int k_splatCount = Shader.PropertyToID("_SplatCount");
@@ -92,6 +93,7 @@ namespace Gsplat
                 kernel = cs.FindKernel("IntersectUncompressed");
                 cs.SetBuffer(kernel, k_positionBuffer, uncompressed.PositionBuffer);
                 cs.SetBuffer(kernel, k_scaleBuffer, uncompressed.ScaleBuffer);
+                cs.SetBuffer(kernel, k_colorBuffer, uncompressed.ColorBuffer);
             }
             else
             {
