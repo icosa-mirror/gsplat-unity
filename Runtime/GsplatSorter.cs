@@ -165,6 +165,12 @@ namespace Gsplat
                 return false;
             }
 
+            // A single global draw can only have one Unity layer. Mixed-layer sets must retain
+            // per-renderer draws so each camera's culling mask is respected.
+            var renderLayer = m_activeGsplats[0].transform.gameObject.layer;
+            if (m_activeGsplats.Any(gs => gs.transform.gameObject.layer != renderLayer))
+                return false;
+
             return true;
         }
 
@@ -238,15 +244,22 @@ namespace Gsplat
         // Called by GsplatPlayerLoopHook once per frame, before Unity's PostLateUpdate phase
         public void Update()
         {
-            GlobalRenderEnabled = m_globalRenderer.Valid && GsplatSettings.Instance.EnableGlobalSort &&
-                                  m_activeGsplats.Count >= 2;
-            if (!GlobalRenderEnabled) return;
             m_activeGsplats.Clear();
             foreach (var gs in m_gsplats.Where(gs => gs is { isActiveAndEnabled: true, Valid: true }))
                 m_activeGsplats.Add(gs);
-            GlobalRenderEnabled = GlobalRenderEnabled && CanRenderGlobally();
-            if (!GlobalRenderEnabled) return;
-            m_globalRenderer.Update(m_activeGsplats);
+
+            GlobalRenderEnabled = m_globalRenderer.Valid && GsplatSettings.Instance.EnableGlobalSort &&
+                                  m_activeGsplats.Count >= 2 && CanRenderGlobally();
+            if (GlobalRenderEnabled)
+            {
+                m_globalRenderer.Update(m_activeGsplats);
+                return;
+            }
+
+            // Select and submit the fallback path here as well, so a runtime transition cannot
+            // make GsplatRenderer.Update observe the previous frame's global-render state.
+            foreach (var renderer in m_activeGsplats.OfType<GsplatRenderer>())
+                renderer.Render();
         }
 
         public ISorterResource CreateSorterResource(uint count, GraphicsBuffer orderBuffer)
