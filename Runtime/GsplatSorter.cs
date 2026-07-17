@@ -269,7 +269,7 @@ namespace Gsplat
                 return;
             }
 
-            foreach (var gs in m_activeGsplats)
+            foreach (var gs in m_activeGsplats.OrderBy(gs => (gs as GsplatRenderer)?.RenderOrder ?? 0))
             {
                 if (gs.RemainingCount <= 0) continue;
                 var layer = (gs as Component)?.gameObject.layer ?? 0;
@@ -304,7 +304,7 @@ namespace Gsplat
                 return;
             }
 
-            foreach (var gs in m_activeGsplats)
+            foreach (var gs in m_activeGsplats.OrderBy(gs => (gs as GsplatRenderer)?.RenderOrder ?? 0))
             {
                 if (gs.RemainingCount <= 0) continue;
                 var layer = (gs as Component)?.gameObject.layer ?? 0;
