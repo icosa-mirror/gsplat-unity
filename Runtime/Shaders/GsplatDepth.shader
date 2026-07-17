@@ -1,7 +1,7 @@
-// Copyright (c) 2025 Yize Wu
+// Copyright (c) 2026 Keir Rice
 // SPDX-License-Identifier: MIT
 
-Shader "Gsplat/Standard"
+Shader "Gsplat/DepthOnly"
 {
     Properties {}
     SubShader
@@ -14,8 +14,9 @@ Shader "Gsplat/Standard"
 
         Pass
         {
-            ZWrite Off
-            Blend One OneMinusSrcAlpha
+            ZWrite On
+            ZTest LEqual
+            ColorMask 0
             Cull Off
 
             HLSLPROGRAM
@@ -34,14 +35,11 @@ Shader "Gsplat/Standard"
             #include "GsplatSpark.hlsl"
             #endif
 
-
-            bool _GammaToLinear;
             int _SplatCount;
             int _SplatInstanceSize;
-            int _SHDegree;
             float4x4 _MATRIX_M;
-            float _Brightness;
             float _ScaleFactor;
+            float _DepthPrepassAlphaCutoff;
             StructuredBuffer<uint> _OrderBuffer;
 
             struct appdata
@@ -72,8 +70,8 @@ Shader "Gsplat/Standard"
             struct v2f
             {
                 float2 uv : TEXCOORD0;
+                float alpha : TEXCOORD1;
                 float4 vertex : SV_POSITION;
-                float4 color: COLOR;
                 UNITY_VERTEX_OUTPUT_STEREO
             };
 
@@ -95,18 +93,10 @@ Shader "Gsplat/Standard"
                 if (!InitSplatData(source, mul(UNITY_MATRIX_V, _MATRIX_M), center, corner, color))
                     return o;
 
-                #ifndef SH_BANDS_0
-                // calculate the model-space view direction
-                float3 dir = normalize(mul(center.view, (float3x3)center.modelView));
-                float3 sh[SH_COEFFS];
-                InitSH(source.id, sh);
-                color.rgb += EvalSH(sh, dir, _SHDegree);
-                #endif
-
                 ClipCorner(corner, color.w);
 
                 o.vertex = center.proj + float4(corner.offset.x, _ProjectionParams.x * corner.offset.y, 0, 0);
-                o.color = color;
+                o.alpha = color.a;
                 o.uv = corner.uv;
                 return o;
             }
@@ -120,16 +110,12 @@ Shader "Gsplat/Standard"
                 float maxUV = max(absUV.x, absUV.y);
 
                 float falloff = -exp((maxUV - _ScaleFactor * 1.16) * 25 * _ScaleFactor);
-                float alpha = (exp(-A * 4.0) + falloff) * i.color.a;
+                float alpha = (exp(-A * 4.0) + falloff) * i.alpha;
 
-                if (alpha < 1.0 / 255.0) discard;
-                if (_GammaToLinear)
-                    return float4(GammaToLinearSpace(i.color.rgb) * alpha * _Brightness, alpha);
-                return float4(i.color.rgb * alpha * _Brightness, alpha);
+                if (alpha < _DepthPrepassAlphaCutoff) discard;
+                return 0;
             }
             ENDHLSL
-
-
         }
     }
 }

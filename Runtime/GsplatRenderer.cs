@@ -5,6 +5,9 @@ using System.Linq;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.Rendering;
+#if UNITY_6000_0_OR_NEWER
+using UnityEngine.Rendering.RenderGraphModule;
+#endif
 
 namespace Gsplat
 {
@@ -96,6 +99,30 @@ namespace Gsplat
             return m_renderer.TryIntersectSphere(transform, centerWorld, radiusWorld,
                 1.0f - SplatDownscaleFactor, out score);
         }
+
+        public void RenderColor(CommandBuffer cmd, Camera camera)
+        {
+            m_renderer.RenderColor(cmd, transform, GammaToLinear, SHDegree, Brightness,
+                1.0f - SplatDownscaleFactor, RenderOrder);
+        }
+
+        public void RenderDepthPrepass(CommandBuffer cmd, Camera camera)
+        {
+            m_renderer.RenderDepthPrepass(cmd, transform, 1.0f - SplatDownscaleFactor, RenderOrder);
+        }
+
+#if UNITY_6000_0_OR_NEWER
+        public void RenderColor(RasterCommandBuffer cmd, Camera camera)
+        {
+            m_renderer.RenderColor(cmd, transform, GammaToLinear, SHDegree, Brightness,
+                1.0f - SplatDownscaleFactor, RenderOrder);
+        }
+
+        public void RenderDepthPrepass(RasterCommandBuffer cmd, Camera camera)
+        {
+            m_renderer.RenderDepthPrepass(cmd, transform, 1.0f - SplatDownscaleFactor, RenderOrder);
+        }
+#endif
 
         void OnEnable()
         {
