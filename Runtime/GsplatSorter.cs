@@ -335,15 +335,23 @@ namespace Gsplat
         // Called by GsplatPlayerLoopHook once per frame, before Unity's PostLateUpdate phase
         public void Update()
         {
-            GlobalRenderEnabled = m_globalRenderer.Valid && GsplatSettings.Instance.EnableGlobalSort &&
-                                  m_activeGsplats.Count >= 2;
-            if (!GlobalRenderEnabled) return;
             m_activeGsplats.Clear();
             foreach (var gs in m_gsplats.Where(gs => gs is { isActiveAndEnabled: true, Valid: true }))
                 m_activeGsplats.Add(gs);
-            GlobalRenderEnabled = GlobalRenderEnabled && CanRenderGlobally();
-            if (!GlobalRenderEnabled) return;
-            m_globalRenderer.Update(m_activeGsplats);
+
+            GlobalRenderEnabled = m_globalRenderer.Valid && GsplatSettings.Instance.EnableGlobalSort &&
+                                  m_activeGsplats.Count >= 2 && CanRenderGlobally();
+            if (GlobalRenderEnabled)
+            {
+                m_globalRenderer.Update(m_activeGsplats);
+                return;
+            }
+
+            // The built-in pipeline has no explicit SRP pass to own fallback submission.
+            // URP and HDRP record their per-renderer draws later in their dedicated passes.
+            if (!GraphicsSettings.currentRenderPipeline)
+                foreach (var renderer in m_activeGsplats.OfType<GsplatRenderer>())
+                    renderer.Render();
         }
 
         public ISorterResource CreateSorterResource(uint count, GraphicsBuffer orderBuffer)
