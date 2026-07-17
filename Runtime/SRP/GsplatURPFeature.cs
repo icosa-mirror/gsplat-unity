@@ -117,14 +117,19 @@ namespace Gsplat
 
         public override void Create()
         {
-            m_pass = new GsplatRenderPass { renderPassEvent = RenderPassEvent.BeforeRenderingTransparents };
-            m_colorPass = new GsplatColorPass
+            // Record all splat work before URP's transparent draw pass. The depth pass must run
+            // before color so its writes can also depth-test the transparents that follow.
+            m_pass = new GsplatRenderPass
             {
-                renderPassEvent = (RenderPassEvent)((int)RenderPassEvent.BeforeRenderingTransparents + 1)
+                renderPassEvent = (RenderPassEvent)((int)RenderPassEvent.BeforeRenderingTransparents - 3)
             };
             m_depthPrepass = new GsplatDepthPrepass
             {
-                renderPassEvent = (RenderPassEvent)((int)RenderPassEvent.BeforeRenderingTransparents + 2)
+                renderPassEvent = (RenderPassEvent)((int)RenderPassEvent.BeforeRenderingTransparents - 2)
+            };
+            m_colorPass = new GsplatColorPass
+            {
+                renderPassEvent = (RenderPassEvent)((int)RenderPassEvent.BeforeRenderingTransparents - 1)
             };
         }
 
