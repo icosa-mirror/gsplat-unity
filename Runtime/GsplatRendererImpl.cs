@@ -38,6 +38,7 @@ namespace Gsplat
         static readonly int k_splatCount = Shader.PropertyToID("_SplatCount");
         static readonly int k_sphereCenter = Shader.PropertyToID("_SphereCenter");
         static readonly int k_sphereRadius = Shader.PropertyToID("_SphereRadius");
+        static readonly int k_maxObjectScale = Shader.PropertyToID("_MaxObjectScale");
         static readonly int k_hitBuffer = Shader.PropertyToID("_HitBuffer");
         static readonly int k_gammaToLinear = Shader.PropertyToID("_GammaToLinear");
         static readonly int k_shDegree = Shader.PropertyToID("_SHDegree");
@@ -106,18 +107,19 @@ namespace Gsplat
             m_intersectionHit[0] = 0;
             m_intersectionHitBuffer.SetData(m_intersectionHit);
 
-            Matrix4x4 worldToLocal = transform.worldToLocalMatrix;
-            Vector3 centerLocal = worldToLocal.MultiplyPoint3x4(centerWorld);
-            float radiusLocal = Mathf.Max(
-                worldToLocal.MultiplyVector(Vector3.right * radiusWorld).magnitude,
+            Matrix4x4 localToWorld = transform.localToWorldMatrix;
+            float maxObjectScale = Mathf.Max(
+                localToWorld.MultiplyVector(Vector3.right).magnitude,
                 Mathf.Max(
-                    worldToLocal.MultiplyVector(Vector3.up * radiusWorld).magnitude,
-                    worldToLocal.MultiplyVector(Vector3.forward * radiusWorld).magnitude));
+                    localToWorld.MultiplyVector(Vector3.up).magnitude,
+                    localToWorld.MultiplyVector(Vector3.forward).magnitude));
 
             cs.SetInt(k_splatCount, (int)m_remainingCount);
-            cs.SetVector(k_sphereCenter, centerLocal);
-            cs.SetFloat(k_sphereRadius, radiusLocal);
+            cs.SetVector(k_sphereCenter, centerWorld);
+            cs.SetFloat(k_sphereRadius, radiusWorld);
             cs.SetFloat(k_scaleFactor, scaleFactor);
+            cs.SetFloat(k_maxObjectScale, maxObjectScale);
+            cs.SetMatrix(k_matrixM, localToWorld);
             cs.SetBuffer(kernel, k_hitBuffer, m_intersectionHitBuffer);
             cs.Dispatch(kernel, (int)GsplatUtils.DivRoundUp(m_remainingCount, 256), 1, 1);
 

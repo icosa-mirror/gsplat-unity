@@ -8,6 +8,8 @@ uint _SplatCount;
 float3 _SphereCenter;
 float _SphereRadius;
 float _ScaleFactor;
+float _MaxObjectScale;
+float4x4 _MATRIX_M;
 
 StructuredBuffer<uint4> _PackedSplatsBuffer;
 StructuredBuffer<float3> _PositionBuffer;
@@ -44,7 +46,8 @@ bool IntersectsSplatSphere(float3 center, float3 scale, float alpha)
     if (alpha <= 0.0)
         return false;
 
-    float splatRadius = max(max(scale.x, scale.y), scale.z) * _ScaleFactor * 2.0;
+    center = mul(_MATRIX_M, float4(center, 1.0)).xyz;
+    float splatRadius = max(max(scale.x, scale.y), scale.z) * _ScaleFactor * 2.0 * _MaxObjectScale;
     float radius = _SphereRadius + splatRadius;
     return dot(center - _SphereCenter, center - _SphereCenter) <= radius * radius;
 }
