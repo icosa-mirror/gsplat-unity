@@ -77,6 +77,8 @@ namespace Gsplat
         readonly HashSet<IGsplat> m_gsplats = new();
         readonly HashSet<Camera> m_camerasInjected = new();
         readonly List<IGsplat> m_activeGsplats = new();
+        readonly List<IGsplat> m_globalGsplats = new();
+        readonly List<IGsplat> m_fallbackGsplats = new();
         readonly HashSet<int> m_warnedUncompressed = new();
         GsplatSortPass m_sortPass;
         public const string k_passName = "SortGsplats";
@@ -133,6 +135,8 @@ namespace Gsplat
             }
 
             m_activeGsplats.Clear();
+            m_globalGsplats.Clear();
+            m_fallbackGsplats.Clear();
             m_commandBuffer?.Dispose();
             m_commandBuffer = null;
             Camera.onPreCull -= OnPreCullCamera;
@@ -155,7 +159,7 @@ namespace Gsplat
         bool CanRenderGlobally()
         {
             // renderer_id is packed into 8 bits ([31:24]); max 255 renderers.
-            if (m_activeGsplats.Count > 255)
+            if (m_globalGsplats.Count > 255)
             {
                 Debug.LogError(
                     "[GsplatSorter] Global merge supports at most 255 renderers. Falling back to per-renderer rendering.");
@@ -163,21 +167,21 @@ namespace Gsplat
             }
 
             // Global merge requires every active renderer to use SPARK compression.
-            foreach (var gs in m_activeGsplats)
+            foreach (var gs in m_globalGsplats)
             {
                 if (gs.GsplatResource is GsplatResourceSpark) continue;
                 var obj = gs as UnityEngine.Object;
                 var id = obj ? obj.GetInstanceID() : 0;
                 if (m_warnedUncompressed.Add(id))
                     Debug.LogWarning(
-                        $"[GsplatSorter] '{obj?.name}' uses an uncompressed asset; global sort requires every active renderer to use SPARK compression. Disabling global sort for this scene — all renderers fall back to per-renderer rendering.");
+                        $"[GsplatSorter] '{obj?.name}' uses an uncompressed asset; global sort requires every participating renderer to use SPARK compression. Participating renderers will fall back to per-renderer rendering.");
                 return false;
             }
 
             // One merged draw cannot represent multiple Unity layers. Use per-renderer draws
             // for mixed layers so each camera can apply its culling mask independently.
-            var renderLayer = m_activeGsplats[0].transform.gameObject.layer;
-            if (m_activeGsplats.Any(gs => gs.transform.gameObject.layer != renderLayer))
+            var renderLayer = m_globalGsplats[0].transform.gameObject.layer;
+            if (m_globalGsplats.Any(gs => gs.transform.gameObject.layer != renderLayer))
                 return false;
 
             return true;
@@ -187,7 +191,7 @@ namespace Gsplat
         {
             if (!camera)
                 return true;
-            var layer = m_activeGsplats[0].transform.gameObject.layer;
+            var layer = m_globalGsplats[0].transform.gameObject.layer;
             return (camera.cullingMask & (1 << layer)) != 0;
         }
 
@@ -255,7 +259,7 @@ namespace Gsplat
 
             // --- Global K-way merge ---
             if (GlobalRenderEnabled)
-                m_globalRenderer.DispatchMerge(cmd, m_activeGsplats);
+                m_globalRenderer.DispatchMerge(cmd, m_globalGsplats);
         }
 
         public void RenderDepthPrepass(CommandBuffer cmd, Camera camera)
@@ -264,10 +268,10 @@ namespace Gsplat
             {
                 if (CameraRendersGlobalLayer(camera))
                     m_globalRenderer.RenderDepthPrepass(cmd);
-                return;
             }
 
-            foreach (var gs in m_activeGsplats)
+            var perRendererGsplats = GlobalRenderEnabled ? m_fallbackGsplats : m_activeGsplats;
+            foreach (var gs in perRendererGsplats)
             {
                 if (gs.RemainingCount <= 0) continue;
                 var layer = gs.transform.gameObject.layer;
@@ -282,10 +286,10 @@ namespace Gsplat
             {
                 if (CameraRendersGlobalLayer(camera))
                     m_globalRenderer.RenderColor(cmd);
-                return;
             }
 
-            foreach (var gs in m_activeGsplats.OrderBy(gs => (gs as GsplatRenderer)?.RenderOrder ?? 0))
+            var perRendererGsplats = GlobalRenderEnabled ? m_fallbackGsplats : m_activeGsplats;
+            foreach (var gs in perRendererGsplats.OrderBy(gs => (gs as GsplatRenderer)?.RenderOrder ?? 0))
             {
                 if (gs.RemainingCount <= 0) continue;
                 var layer = gs.transform.gameObject.layer;
@@ -301,10 +305,10 @@ namespace Gsplat
             {
                 if (CameraRendersGlobalLayer(camera))
                     m_globalRenderer.RenderDepthPrepass(cmd);
-                return;
             }
 
-            foreach (var gs in m_activeGsplats)
+            var perRendererGsplats = GlobalRenderEnabled ? m_fallbackGsplats : m_activeGsplats;
+            foreach (var gs in perRendererGsplats)
             {
                 if (gs.RemainingCount <= 0) continue;
                 var layer = gs.transform.gameObject.layer;
@@ -319,10 +323,10 @@ namespace Gsplat
             {
                 if (CameraRendersGlobalLayer(camera))
                     m_globalRenderer.RenderColor(cmd);
-                return;
             }
 
-            foreach (var gs in m_activeGsplats.OrderBy(gs => (gs as GsplatRenderer)?.RenderOrder ?? 0))
+            var perRendererGsplats = GlobalRenderEnabled ? m_fallbackGsplats : m_activeGsplats;
+            foreach (var gs in perRendererGsplats.OrderBy(gs => (gs as GsplatRenderer)?.RenderOrder ?? 0))
             {
                 if (gs.RemainingCount <= 0) continue;
                 var layer = gs.transform.gameObject.layer;
@@ -339,11 +343,24 @@ namespace Gsplat
             foreach (var gs in m_gsplats.Where(gs => gs is { isActiveAndEnabled: true, Valid: true }))
                 m_activeGsplats.Add(gs);
 
+            m_globalGsplats.Clear();
+            m_fallbackGsplats.Clear();
+            foreach (var gs in m_activeGsplats)
+            {
+                if (gs is GsplatRenderer { ParticipateInGlobalSort: false })
+                    m_fallbackGsplats.Add(gs);
+                else
+                    m_globalGsplats.Add(gs);
+            }
+
             GlobalRenderEnabled = m_globalRenderer.Valid && GsplatSettings.Instance.EnableGlobalSort &&
-                                  m_activeGsplats.Count >= 2 && CanRenderGlobally();
+                                  m_globalGsplats.Count >= 2 && CanRenderGlobally();
             if (GlobalRenderEnabled)
             {
-                m_globalRenderer.Update(m_activeGsplats);
+                m_globalRenderer.Update(m_globalGsplats);
+                if (!GraphicsSettings.currentRenderPipeline)
+                    foreach (var renderer in m_fallbackGsplats.OfType<GsplatRenderer>())
+                        renderer.Render();
                 return;
             }
 
