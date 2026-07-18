@@ -34,6 +34,24 @@ namespace Gsplat
         public bool AsyncUpload;
         public bool RenderBeforeUploadComplete = true;
 
+        [SerializeField]
+        [Tooltip("When enabled, this renderer can be merged with other compatible renderers for global depth sorting. Disable it for isolated previews or other renderers that must retain an independent draw.")]
+        bool m_participateInGlobalSort = true;
+
+        public bool ParticipateInGlobalSort
+        {
+            get => m_participateInGlobalSort;
+            set
+            {
+                if (m_participateInGlobalSort == value)
+                    return;
+
+                m_participateInGlobalSort = value;
+                if (isActiveAndEnabled)
+                    GsplatSorter.Instance.MarkGlobalBuffersDirty();
+            }
+        }
+
         [Tooltip("Does cutouts update the Gsplat world bounds? (Costly on moving cutouts)")]
         public bool CutoutsUpdateBounds = true;
 
@@ -123,6 +141,7 @@ namespace Gsplat
         void OnValidate()
         {
             ForceRefresh();
+            GsplatSorter.Instance.MarkGlobalBuffersDirty();
 #if UNITY_EDITOR
             if (GsplatAsset &&
                 AssetDatabase.TryGetGUIDAndLocalFileIdentifier(GsplatAsset, out var guid, out long localId))
